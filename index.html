@@ -171,8 +171,9 @@
 
 <script>
 document.getElementById('nojsNote').style.display='none';
-document.querySelectorAll('.js-on').forEach(e=>e.style.display='');
+document.querySelectorAll('.js-on').forEach(e=>e.classList.remove('js-on'));
 document.querySelector('.layout').style.display='grid';
+document.querySelector('.summary').style.display='block';
 
 const state={palette:'violet-lime',mode:'dark',radius:'soft',font:'geometric',mood:[],screens:[],refs:'',avoid:'',brandnotes:''};
 const palettes=[
@@ -231,3 +232,4 @@ apply();
 </script>
 </body>
 </html>
+
