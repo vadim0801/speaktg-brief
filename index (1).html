@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light only">
+<title>SpeakTG — визуальный бриф (живой)</title>
+<style>
+  html{background:#f5f4f2;color-scheme:light}
+  *{box-sizing:border-box}
+  body{margin:0;background:#f5f4f2;color:#1a1a2e;
+    font:16px/1.5 'Inter',system-ui,-apple-system,Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 24px 90px}
+
+  /* banner shown when JS not running (Telegram in-app viewer) OR always as a hint */
+  .banner{background:#4C1D95;color:#fff;margin:0 -24px 18px;padding:14px 24px;font-size:14px;
+    display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+  .banner b{font-weight:700}
+  .banner a{color:#C6F135;font-weight:700;text-decoration:underline;cursor:pointer}
+  .nojs-note{display:none;background:#fdecea;color:#8a1c1c;border:1px solid #f5c2bd;
+    border-radius:10px;padding:12px 14px;margin:14px 0;font-size:14px}
+  /* if JS is off, .js-on stays hidden and .nojs-note shows */
+  .js-on{display:none}
+
+  .kicker{font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:#6D28D9;font-weight:800;padding-top:20px}
+  h1{font-size:clamp(26px,4vw,40px);line-height:1.12;margin:6px 0 8px;letter-spacing:-.02em}
+  .sub{color:#55555f;max-width:640px;margin:0 0 8px}
+
+  .layout{display:grid;grid-template-columns:1fr 340px;gap:40px;align-items:start;margin-top:22px}
+  @media(max-width:900px){.layout{grid-template-columns:1fr}.preview-col{order:-1;margin-bottom:8px}}
+
+  section.q{padding:20px 0;border-top:1px solid #e2e0dc}
+  section.q:first-of-type{border-top:none}
+  .q h2{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#6D28D9;margin:0 0 5px;font-weight:800}
+  .q .lead{font-size:19px;font-weight:600;margin:0 0 4px;letter-spacing:-.01em}
+  .q .note{font-size:13px;color:#8a8a96;margin:0 0 14px}
+
+  .palettes{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+  @media(max-width:520px){.palettes{grid-template-columns:1fr 1fr}}
+  .pal{border:2px solid #e2e0dc;border-radius:14px;padding:12px;cursor:pointer;background:#fff;transition:.12s}
+  .pal.sel{border-color:#6D28D9;box-shadow:0 0 0 3px rgba(109,40,217,.14)}
+  .pal .dots{display:flex;gap:6px;margin-bottom:8px}
+  .pal .dots i{width:24px;height:24px;border-radius:7px;display:block}
+  .pal .name{font-size:14px;font-weight:600}
+  .pal .desc{font-size:11px;color:#8a8a96}
+
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:12px}
+  @media(max-width:520px){.cards{grid-template-columns:1fr 1fr}}
+  .ocard{border:2px solid #e2e0dc;border-radius:14px;overflow:hidden;cursor:pointer;background:#fff;transition:.12s}
+  .ocard.sel{border-color:#6D28D9;box-shadow:0 0 0 3px rgba(109,40,217,.14)}
+  .ocard .samp{height:56px;display:flex;align-items:center;justify-content:center}
+  .ocard .lbl{padding:8px 10px;font-size:13px;font-weight:600}
+  .ocard .lbl small{display:block;font-weight:400;color:#8a8a96;font-size:11px}
+
+  .opts{display:flex;flex-wrap:wrap;gap:10px}
+  .chip{border:2px solid #e2e0dc;background:#fff;border-radius:999px;padding:11px 16px;font-size:15px;font-weight:500;cursor:pointer;transition:.12s}
+  .chip.sel{border-color:#6D28D9;background:#6D28D9;color:#fff}
+
+  label.field{display:block;font-size:13px;font-weight:600;color:#55555f;margin:14px 0 6px}
+  textarea{width:100%;border:2px solid #e2e0dc;border-radius:12px;padding:12px 14px;font:inherit;font-size:15px;background:#fff;resize:vertical;min-height:70px}
+  textarea:focus{outline:none;border-color:#6D28D9}
+
+  /* live preview */
+  .preview-col{position:sticky;top:18px}
+  @media(max-width:900px){.preview-col{position:static}}
+  .phone-shell{background:linear-gradient(160deg,#2a2f3d,#1a1d27);border-radius:40px;padding:11px;
+    box-shadow:0 30px 60px -20px rgba(0,0,0,.45);width:290px;margin:0 auto}
+  .phone{background:var(--bg,#0B1220);border-radius:30px;overflow:hidden;height:590px;position:relative;font-family:var(--font,'Inter',sans-serif);display:flex;flex-direction:column}
+  .notch{position:absolute;top:9px;left:50%;transform:translateX(-50%);width:84px;height:20px;background:#000;border-radius:12px;z-index:5}
+  .scr{flex:1;padding:32px 15px 8px;color:var(--text,#fff)}
+  .statusbar{display:flex;justify-content:space-between;font-size:10px;opacity:.8;margin-bottom:11px}
+  .hi{display:flex;align-items:center;gap:8px;margin-bottom:12px}
+  .ava{width:32px;height:32px;border-radius:50%;background:var(--brand,#6D28D9);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#fff}
+  .hi .n{font-weight:700;font-size:13px;line-height:1.1}
+  .hi .lv{font-size:10px;color:var(--muted,#8B95A9)}
+  .streak{margin-left:auto;background:rgba(251,191,36,.16);color:#FBBF24;font-size:11px;font-weight:700;padding:4px 8px;border-radius:999px}
+  .cardui{background:var(--surface,#141B2E);border:1px solid var(--surface2,#1F2940);border-radius:var(--radius,22px);padding:11px;margin-bottom:9px}
+  .flu{display:flex;align-items:center;gap:12px}
+  .ring{width:60px;height:60px;border-radius:50%;flex:none;background:conic-gradient(var(--accent,#C6F135) 0 72%, var(--surface2,#1F2940) 72% 100%);display:flex;align-items:center;justify-content:center;position:relative}
+  .ring::after{content:'';position:absolute;inset:6px;border-radius:50%;background:var(--surface,#141B2E)}
+  .ring b{position:relative;z-index:2;font-size:17px}
+  .flu .info .t{font-size:12px;font-weight:700}
+  .flu .info .up{font-size:11px;color:var(--accent,#C6F135);font-weight:600}
+  .flu .info .m{font-size:10px;color:var(--muted,#8B95A9);margin-top:2px}
+  .tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:9px}
+  .tile{background:var(--surface,#141B2E);border:1px solid var(--surface2,#1F2940);border-radius:calc(var(--radius,22px) * .6);padding:9px}
+  .tile b{font-size:16px;display:block}
+  .tile.a b{color:var(--accent,#C6F135)} .tile.b b{color:#FBBF24}
+  .tile small{font-size:9px;color:var(--muted,#8B95A9)}
+  .sk{font-size:11px;font-weight:700;margin:2px 0 7px}
+  .row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .row span{font-size:10px;color:var(--muted,#8B95A9);width:72px;flex:none}
+  .bar{flex:1;height:7px;border-radius:4px;background:var(--surface2,#1F2940);overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:4px}
+  .cta{background:var(--accent,#C6F135);color:#0b1220;text-align:center;font-weight:700;font-size:13px;padding:11px;border-radius:999px;margin-top:6px}
+  .nav{display:flex;justify-content:space-around;background:var(--surface2,#1F2940);margin:8px 12px;padding:8px 0;border-radius:999px}
+  .nav i{width:8px;height:8px;border-radius:50%;background:var(--muted,#8B95A9);opacity:.5}
+  .nav i.on{width:20px;border-radius:999px;background:var(--brand,#6D28D9);opacity:1}
+  .pcap{text-align:center;font-size:12px;color:#8a8a96;margin-top:12px}
+
+  .summary{margin-top:36px;border:2px solid #1a1a2e;border-radius:16px;padding:22px;background:#fff}
+  .summary h3{margin:0 0 14px;font-size:18px}
+  .sumgrid{display:grid;grid-template-columns:180px 1fr;gap:8px 16px;font-size:14px}
+  @media(max-width:520px){.sumgrid{grid-template-columns:1fr;gap:0}.sumgrid dt{margin-top:12px}}
+  .sumgrid dt{font-weight:600;color:#55555f}.sumgrid dd{margin:0}
+  .actions{display:flex;gap:10px;margin-top:18px;flex-wrap:wrap}
+  .btn{border:none;border-radius:10px;padding:12px 18px;font:inherit;font-weight:600;font-size:14px;cursor:pointer}
+  .btn.primary{background:#6D28D9;color:#fff}.btn.ghost{background:#fff;border:2px solid #e2e0dc}
+  @media(max-width:520px){.actions .btn{flex:1}}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(20px);background:#1a1a2e;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;opacity:0;transition:.25s;pointer-events:none}
+  .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="banner">
+    <span>✦ <b>Живой визуальный бриф SpeakTG.</b> Отмечайте, что нравится — экран приложения меняется сразу.</span>
+  </div>
+
+  <div class="nojs-note" id="nojsNote">
+    Похоже, страница открыта во встроенном просмотрщике, где не работает интерактив.
+    Откройте её в браузере (кнопка «⋯» → «Открыть в Safari/Chrome») — тогда экран телефона будет меняться при выборе.
+  </div>
+
+  <div class="kicker">SpeakTG · визуальный бриф</div>
+  <h1>Каким должен быть дизайн приложения?</h1>
+  <p class="sub">Отметьте, что нравится. Экран приложения справа меняется вживую — так сразу видно, к чему идём. В конце нажмите «Скопировать бриф» и передайте результат дизайнеру.</p>
+
+  <div class="layout js-on" id="app">
+    <div class="form-col">
+      <section class="q"><h2>01 · Палитра</h2><div class="lead">Какие цвета ближе?</div><div class="palettes" id="palettes"></div></section>
+      <section class="q"><h2>02 · Фон</h2><div class="lead">Светлый или тёмный интерфейс?</div><div class="cards" id="mode"></div></section>
+      <section class="q"><h2>03 · Форма элементов</h2><div class="lead">Скругления карточек и кнопок</div><div class="cards" id="radius"></div></section>
+      <section class="q"><h2>04 · Шрифт</h2><div class="lead">Характер текста</div><div class="cards" id="font"></div></section>
+      <section class="q"><h2>05 · Настроение</h2><div class="lead">Как должно ощущаться приложение?</div><div class="note">можно несколько</div><div class="opts" id="mood"></div></section>
+      <section class="q"><h2>06 · Приоритетные экраны</h2><div class="lead">Что важнее в первую очередь?</div><div class="note">можно несколько</div><div class="opts" id="screens"></div></section>
+      <section class="q"><h2>07 · Референсы и пожелания</h2><div class="lead">Свободные комментарии</div>
+        <label class="field">Приложения или сайты, которые нравятся по виду</label><textarea id="refs" placeholder="Например: Duolingo — за живость, Revolut — за аккуратность…"></textarea>
+        <label class="field">Чего точно не хотим</label><textarea id="avoid" placeholder="Например: без детских иллюстраций, без кислотных цветов…"></textarea>
+        <label class="field">Есть ли готовый логотип, фирменные цвета, название?</label><textarea id="brandnotes" placeholder="Название рабочее — SpeakTG. Логотипа пока нет…"></textarea>
+      </section>
+    </div>
+
+    <div class="preview-col">
+      <div class="phone-shell"><div class="phone" id="phone">
+        <div class="notch"></div>
+        <div class="scr">
+          <div class="statusbar"><span>9:41</span><span>● ● ●</span></div>
+          <div class="hi"><div class="ava">Я</div><div><div class="n">Привет, Ян</div><div class="lv">B1 · Intermediate</div></div><div class="streak">12 дн.</div></div>
+          <div class="cardui"><div class="flu"><div class="ring"><b>72</b></div><div class="info"><div class="t">Беглость</div><div class="up">▲ +6 за неделю</div><div class="m">Темп 118 слов/мин</div><div class="m">Паузы 9% · паразитов 3</div></div></div></div>
+          <div class="tiles"><div class="tile a"><b>340</b><small>баллов сегодня, цель 68%</small></div><div class="tile b"><b>#3</b><small>в лиге недели</small></div></div>
+          <div class="sk">Навыки</div>
+          <div class="row"><span>Говорение</span><div class="bar"><i style="width:55%;background:var(--accent,#C6F135)"></i></div></div>
+          <div class="row"><span>Аудирование</span><div class="bar"><i style="width:72%;background:var(--brand,#6D28D9)"></i></div></div>
+          <div class="row"><span>Грамматика</span><div class="bar"><i style="width:40%;background:#38BDF8"></i></div></div>
+          <div class="row"><span>Словарь</span><div class="bar"><i style="width:80%;background:#F472B6"></i></div></div>
+          <div class="cta">Поговорить с Emma</div>
+        </div>
+        <div class="nav"><i class="on"></i><i></i><i></i><i></i><i></i></div>
+      </div></div>
+      <div class="pcap">Живое превью — меняется при выборе</div>
+    </div>
+  </div>
+
+  <div class="summary js-on"><h3>Итог визуального брифа</h3><dl class="sumgrid" id="sumgrid"></dl>
+    <div class="actions"><button class="btn primary" onclick="copySummary()">Скопировать бриф</button><button class="btn ghost" onclick="resetAll()">Сбросить</button></div>
+  </div>
+</div>
+<div class="toast" id="toast">Скопировано</div>
+
+<script>
+document.getElementById('nojsNote').style.display='none';
+document.querySelectorAll('.js-on').forEach(e=>e.style.display='');
+document.querySelector('.layout').style.display='grid';
+
+const state={palette:'violet-lime',mode:'dark',radius:'soft',font:'geometric',mood:[],screens:[],refs:'',avoid:'',brandnotes:''};
+const palettes=[
+ {id:'violet-lime',name:'Фиолет + лайм',desc:'смело, современно',c:['#6D28D9','#C6F135','#0B1220','#141B2E']},
+ {id:'ocean',name:'Океан',desc:'спокойно, надёжно',c:['#2563EB','#22D3EE','#0A1628','#122036']},
+ {id:'sunset',name:'Закат',desc:'тепло, дружелюбно',c:['#F97316','#FBBF24','#1A1120','#2A1B2E']},
+ {id:'mint',name:'Мята',desc:'свежо, легко',c:['#10B981','#A7F3D0','#0C1A17','#12241F']},
+ {id:'coral',name:'Коралл',desc:'живо, эмоционально',c:['#F43F5E','#FDA4AF','#1A0F14','#2A1620']},
+ {id:'royal',name:'Индиго + золото',desc:'дорого, статусно',c:['#4338CA','#FCD34D','#0B0F24','#151A3A']},
+ {id:'graphite',name:'Графит + неон',desc:'техно, строго',c:['#3B82F6','#84CC16','#0A0A0A','#171717']},
+ {id:'candy',name:'Ягода',desc:'яркое, для молодых',c:['#A855F7','#F0ABFC','#140A1F','#22132E']},
+];
+const modes=[{id:'dark',lbl:'Тёмный',sub:'как в примере',bg:'#141B2E'},{id:'light',lbl:'Светлый',sub:'воздушный',bg:'#EEF0F4'},{id:'auto',lbl:'Обе темы',sub:'под систему',bg:'linear-gradient(90deg,#141B2E 50%,#EEF0F4 50%)'}];
+const radii=[{id:'sharp',lbl:'Строгие',sub:'острые',r:'8px'},{id:'soft',lbl:'Мягкие',sub:'умеренные',r:'22px'},{id:'round',lbl:'Округлые',sub:'плавные',r:'32px'}];
+const fonts=[{id:'geometric',lbl:'Геометрический',sub:'чисто',ff:"'Inter',sans-serif"},{id:'rounded',lbl:'Округлый',sub:'дружелюбный',ff:"'Baloo 2',cursive,sans-serif"},{id:'grotesk',lbl:'Гротеск',sub:'характерный',ff:"'Space Grotesk','Inter',sans-serif"},{id:'serif',lbl:'С засечками',sub:'книжный',ff:"Georgia,serif"}];
+const moods=['Дружелюбно','Строго','Игрово','Премиально','Энергично','Спокойно','Минималистично','Ярко'];
+const screensList=['Дашборд','Голосовой диалог','Уроки','Тест уровня','Лиги','Профиль','Оплата','Онбординг'];
+
+function shade(hex,a){const n=parseInt(hex.slice(1),16);let r=(n>>16)+a,g=((n>>8)&255)+a,b=(n&255)+a;r=Math.max(0,Math.min(255,r));g=Math.max(0,Math.min(255,g));b=Math.max(0,Math.min(255,b));return '#'+((r<<16)|(g<<8)|b).toString(16).padStart(6,'0');}
+function apply(){
+  const p=palettes.find(x=>x.id===state.palette),r=document.documentElement.style;
+  r.setProperty('--brand',p.c[0]);r.setProperty('--accent',p.c[1]);
+  if(state.mode==='light'){r.setProperty('--bg','#EEF0F4');r.setProperty('--surface','#FFFFFF');r.setProperty('--surface2','#E5E8EE');r.setProperty('--text','#141B2E');r.setProperty('--muted','#6B7280');}
+  else{r.setProperty('--bg',p.c[2]);r.setProperty('--surface',p.c[3]);r.setProperty('--surface2',shade(p.c[3],14));r.setProperty('--text','#FFFFFF');r.setProperty('--muted','#8B95A9');}
+  r.setProperty('--radius',radii.find(x=>x.id===state.radius).r);
+  r.setProperty('--font',fonts.find(x=>x.id===state.font).ff);
+  renderSummary();
+}
+const palEl=document.getElementById('palettes');
+palettes.forEach(p=>{const d=document.createElement('div');d.className='pal'+(p.id===state.palette?' sel':'');d.innerHTML=`<div class="dots">${p.c.slice(0,3).map(c=>`<i style="background:${c}"></i>`).join('')}</div><div class="name">${p.name}</div><div class="desc">${p.desc}</div>`;d.onclick=()=>{state.palette=p.id;[...palEl.children].forEach(c=>c.classList.remove('sel'));d.classList.add('sel');apply();};palEl.appendChild(d);});
+function buildCards(host,list,key,fn){const el=document.getElementById(host);list.forEach(o=>{const d=document.createElement('div');d.className='ocard'+(o.id===state[key]?' sel':'');d.innerHTML=`<div class="samp">${fn(o)}</div><div class="lbl">${o.lbl}<small>${o.sub}</small></div>`;d.onclick=()=>{state[key]=o.id;[...el.children].forEach(c=>c.classList.remove('sel'));d.classList.add('sel');apply();};el.appendChild(d);});}
+buildCards('mode',modes,'mode',o=>`<div style="width:100%;height:100%;background:${o.bg}"></div>`);
+buildCards('radius',radii,'radius',o=>`<div style="width:40px;height:34px;background:#6D28D9;border-radius:${o.r}"></div>`);
+buildCards('font',fonts,'font',o=>`<div style="font-family:${o.ff};font-size:25px;font-weight:700">Aa</div>`);
+function buildChips(host,list,key){const el=document.getElementById(host);list.forEach(v=>{const c=document.createElement('div');c.className='chip';c.textContent=v;c.onclick=()=>{const i=state[key].indexOf(v);if(i>=0){state[key].splice(i,1);c.classList.remove('sel');}else{state[key].push(v);c.classList.add('sel');}renderSummary();};el.appendChild(c);});}
+buildChips('mood',moods,'mood');buildChips('screens',screensList,'screens');
+['refs','avoid','brandnotes'].forEach(id=>document.getElementById(id).addEventListener('input',e=>{state[id]=e.target.value;renderSummary();}));
+function lab(list,id){const o=list.find(x=>x.id===id);return o?(o.lbl||o.name):id;}
+function esc(s){return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));}
+function renderSummary(){const p=palettes.find(x=>x.id===state.palette);const rows=[['Палитра',`${p.name} (${p.c.slice(0,2).join(', ')})`],['Фон',lab(modes,state.mode)],['Скругления',lab(radii,state.radius)],['Шрифт',lab(fonts,state.font)],['Настроение',state.mood.join(', ')||'—'],['Экраны',state.screens.join(', ')||'—'],['Референсы',state.refs||'—'],['Чего избегать',state.avoid||'—'],['Бренд / логотип',state.brandnotes||'—']];document.getElementById('sumgrid').innerHTML=rows.map(r=>`<dt>${r[0]}</dt><dd>${esc(r[1])}</dd>`).join('');}
+function copySummary(){const p=palettes.find(x=>x.id===state.palette);const t=`ВИЗУАЛЬНЫЙ БРИФ — SpeakTG
+Палитра: ${p.name} — ${p.c.slice(0,2).join(', ')}, фон ${p.c[2]}
+Фон: ${lab(modes,state.mode)}
+Скругления: ${lab(radii,state.radius)}
+Шрифт: ${lab(fonts,state.font)}
+Настроение: ${state.mood.join(', ')||'—'}
+Экраны: ${state.screens.join(', ')||'—'}
+Референсы: ${state.refs||'—'}
+Чего избегать: ${state.avoid||'—'}
+Бренд/логотип: ${state.brandnotes||'—'}`;
+  const ok=()=>{const el=document.getElementById('toast');el.classList.add('show');setTimeout(()=>el.classList.remove('show'),1800);};
+  if(navigator.clipboard){navigator.clipboard.writeText(t).then(ok,()=>fallback(t,ok));}else fallback(t,ok);}
+function fallback(t,ok){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy');}catch(e){}a.remove();ok();}
+function resetAll(){Object.assign(state,{palette:'violet-lime',mode:'dark',radius:'soft',font:'geometric',mood:[],screens:[],refs:'',avoid:'',brandnotes:''});document.querySelectorAll('.chip.sel').forEach(c=>c.classList.remove('sel'));['refs','avoid','brandnotes'].forEach(id=>document.getElementById(id).value='');[['palettes',palettes,'palette'],['mode',modes,'mode'],['radius',radii,'radius'],['font',fonts,'font']].forEach(([h,list,key])=>[...document.getElementById(h).children].forEach((c,i)=>c.classList.toggle('sel',list[i].id===state[key])));apply();}
+apply();
+</script>
+</body>
+</html>
